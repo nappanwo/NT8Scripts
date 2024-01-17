@@ -84,6 +84,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		private double 	newPrice			= 0;		// Default setting for new price used to calculate trailing stop
 		private double	stopPlot			= 0;		// Value used to plot the stop level
 		private double	initialBreakEven	= 0; 	
+		private int 	BarOffset			= 0;		//Can be used to offset the candle used for HILO entries
 		private bool enableTrail;
 		private bool showTrailOptions;
 		private bool enableBreakeven;
@@ -143,7 +144,7 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
                     TraceOrders									= false;
                     RealtimeErrorHandling						= RealtimeErrorHandling.StopCancelClose;
                     StopTargetHandling							= StopTargetHandling.PerEntryExecution;
-                    BarsRequiredToTrade							= 20;
+                    BarsRequiredToTrade							= 140;
                     // Disable this property for performance gains in Strategy Analyzer optimizations
                     // See the Help Guide for additional information
                     IsInstantiatedOnEachOptimizationIteration	= true;
@@ -163,21 +164,21 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					StrategyName 					= "ArchReactor Strategy";
 					orderState = CommonEnums.OrderState.BOTH;
 					IsStratEnabled = true;
-					EnableTrail = true;
-					EnableBreakeven = true;
-					enableTrail = true;
+					EnableTrail = false;
+					EnableBreakeven = false;
+					enableTrail = false;
 					showTrailOptions = true;
-					enableBreakeven = true;
+					enableBreakeven = false;
 					showBreakevenOptions = true;
-					orderType	= CommonEnums.OrderType.MARKET;
-					limitType = CommonEnums.LimitType.CLOSE;
-					showLimitTypeOptions = false;
+					orderType	= CommonEnums.OrderType.LIMIT;
+					limitType = CommonEnums.LimitType.HILO;
+					showLimitTypeOptions = true;
 					LimitOffset = 0;
 					isHistoricalTradeDisplayed = false;
 					//EnableCustomStopLoss = false;
 					//EnableCustomProfitTarget = false;
 					enableRunner = false;
-					showRunnerOptions = false;
+					showRunnerOptions = true;
 					RunnerPositionSize = 1;
 					DisplayStrategyPnLOrientation = TextPosition.BottomLeft;
 					DisplayHistoricalTradePerformanceOrientation = TextPosition.BottomRight;
@@ -185,8 +186,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					JumpToProfitTickOffset = 4;
 					
 					trailStopType = CommonEnums.TrailStopType.TickTrail;
-					showTickTrailOptions = false;
-					showATRTrailOptions = false;
+					showTickTrailOptions = true;
+					showATRTrailOptions = true;
 					
 					TrailStop_ATR_Period = 14;
 					TrailStop_ATR_Mult = 2;
@@ -196,31 +197,33 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
                     Time_2 	= false;
                     Time_3 	= false;
                     Time_4	= false;
+
+					
                     
-                    Start_Time_1 = DateTime.Parse("06:30", System.Globalization.CultureInfo.InvariantCulture);
-                    Stop_Time_1 = DateTime.Parse("13:00", System.Globalization.CultureInfo.InvariantCulture);
-                    Start_Time_2 = DateTime.Parse("1:15", System.Globalization.CultureInfo.InvariantCulture);
-                    Stop_Time_2 = DateTime.Parse("08:00", System.Globalization.CultureInfo.InvariantCulture);
-                    Start_Time_3 = DateTime.Parse("09:45", System.Globalization.CultureInfo.InvariantCulture);
-                    Stop_Time_3 = DateTime.Parse("11:00", System.Globalization.CultureInfo.InvariantCulture);
-                    Start_Time_4 = DateTime.Parse("13:00", System.Globalization.CultureInfo.InvariantCulture);
-                    Stop_Time_4 = DateTime.Parse("14:00", System.Globalization.CultureInfo.InvariantCulture);
+                    Start_Time_1 = DateTime.Parse("06:00 AM", System.Globalization.CultureInfo.InvariantCulture);
+                    Stop_Time_1 = DateTime.Parse("01:00 PM", System.Globalization.CultureInfo.InvariantCulture);
+                    Start_Time_2 = DateTime.Parse("01:15 AM", System.Globalization.CultureInfo.InvariantCulture);
+                    Stop_Time_2 = DateTime.Parse("08:00 AM", System.Globalization.CultureInfo.InvariantCulture);
+                    Start_Time_3 = DateTime.Parse("09:45 AM", System.Globalization.CultureInfo.InvariantCulture);
+                    Stop_Time_3 = DateTime.Parse("11:00 AM", System.Globalization.CultureInfo.InvariantCulture);
+                    Start_Time_4 = DateTime.Parse("12:00 AM", System.Globalization.CultureInfo.InvariantCulture);
+                    Stop_Time_4 = DateTime.Parse("11:59 PM", System.Globalization.CultureInfo.InvariantCulture);
 					
 					MaxTarget = 200;
 					MaxLoss = -200;
 					DisplayStrategyPnL = true;
 					DisplayHistoricalTradePerformance = true;
-					stopLossType = CommonEnums.StopLossType.Fixed;
+					stopLossType = CommonEnums.StopLossType.ATR;
 					StopLoss_ATR_Period = 14;
 					StopLoss_ATR_Mult	= 2;
-					showFixedStopLossOptions = false;
-					showATRStopLossOptions = false;
+					showFixedStopLossOptions = true;
+					showATRStopLossOptions = true;
 					
-					profitTargetType = CommonEnums.ProfitTargetType.Fixed;
+					profitTargetType = CommonEnums.ProfitTargetType.ATR;
 					ProfitTarget_ATR_Period = 14;
 					ProfitTarget_ATR_Mult	= 2;
-					showFixedProfitTargetOptions = false;
-					showATRProfitTargetOptions = false;
+					showFixedProfitTargetOptions = true;
+					showATRProfitTargetOptions = true;
 					
 					stopLossPriceLong = InitialStopLong;
 					stopLossPriceShort = InitialStopShort;
@@ -246,7 +249,11 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					#endregion
                     break;
                 case State.Configure:
-					initializeIndicators();
+
+					initializeIndicators();					
+
+					//Sheigh modified to make all atr based tp/sl have the same period as ProfitTarget_ATR_Period
+					StopLoss_ATR_Period = TrailStop_ATR_Period = ProfitTarget_ATR_Period;
 					
 					if (stopLossType == CommonEnums.StopLossType.ATR) {
 						StopLoss_ATR = ATRTrailBands(StopLoss_ATR_Period, StopLoss_ATR_Mult);
@@ -814,12 +821,12 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		protected virtual void calculateStopLossPriceLong(double price, bool isRunner) {
 			if (stopLossType == CommonEnums.StopLossType.ATR) {
 				//SetStopLoss(entryLongString1, CalculationMode.Price, StopLoss_ATR.TrailingStopLow[0], false);
-				Print("Setting ATR StopLoss Long "+StopLoss_ATR.TrailingStopLow[0]);
+				Print("Setting ATR StopLoss Long "+Instrument.MasterInstrument.RoundToTickSize(StopLoss_ATR.TrailingStopLow[0]));
 				if (isRunner == false)
-					ExitLongStopMarket(0, true, PositionSize, StopLoss_ATR.TrailingStopLow[0], "Stop " + entryLongString1, entryLongString1);
+					ExitLongStopMarket(0, true, PositionSize, Instrument.MasterInstrument.RoundToTickSize(StopLoss_ATR.TrailingStopLow[0]), "Stop " + entryLongString1, entryLongString1);
 				else {
-					//SetStopLoss(entryLongString2, CalculationMode.Price, StopLoss_ATR.TrailingStopLow[0], false);
-					ExitLongStopMarket(0, true, RunnerPositionSize, StopLoss_ATR.TrailingStopLow[0], "Stop " + entryLongString2, entryLongString2);
+					//SetStopLoss(entryLongString2, CalculationMode.Price, Instrument.MasterInstrument.RoundToTickSize(StopLoss_ATR.TrailingStopLow[0]), false);
+					ExitLongStopMarket(0, true, RunnerPositionSize, Instrument.MasterInstrument.RoundToTickSize(StopLoss_ATR.TrailingStopLow[0]), "Stop " + entryLongString2, entryLongString2);
 				//	Print("Put StopLoss 2 ATR Long");
 				} 
 			} else {
@@ -839,15 +846,15 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		
 		protected virtual void calculateStopLossPriceShort(double price, bool isRunner) {
 			if (stopLossType == CommonEnums.StopLossType.ATR) {
-				Print("Setting ATR StopLoss Short "+StopLoss_ATR.TrailingStopHigh[0]);
-				//SetStopLoss(entryShortString1, CalculationMode.Price, StopLoss_ATR.TrailingStopHigh[0], false);
+				Print("Setting ATR StopLoss Short "+Instrument.MasterInstrument.RoundToTickSize(StopLoss_ATR.TrailingStopHigh[0]));
+				//SetStopLoss(entryShortString1, CalculationMode.Price, Instrument.MasterInstrument.RoundToTickSize(StopLoss_ATR.TrailingStopHigh[0]), false);
 				if (isRunner == false)
-					ExitShortStopMarket(0, true, PositionSize, StopLoss_ATR.TrailingStopHigh[0], "Stop " + entryShortString1, entryShortString1);
+					ExitShortStopMarket(0, true, PositionSize, Instrument.MasterInstrument.RoundToTickSize(StopLoss_ATR.TrailingStopHigh[0]), "Stop " + entryShortString1, entryShortString1);
 			//	Print("Put StopLoss 1 ATR Short");
 				
 				else {
-					//SetStopLoss(entryShortString2, CalculationMode.Price, StopLoss_ATR.TrailingStopHigh[0], false);
-					ExitShortStopMarket(0, true, RunnerPositionSize, StopLoss_ATR.TrailingStopHigh[0], "Stop " + entryShortString2, entryShortString2);
+					//SetStopLoss(entryShortString2, CalculationMode.Price, Instrument.MasterInstrument.RoundToTickSize(StopLoss_ATR.TrailingStopHigh[0]), false);
+					ExitShortStopMarket(0, true, RunnerPositionSize, Instrument.MasterInstrument.RoundToTickSize(StopLoss_ATR.TrailingStopHigh[0]), "Stop " + entryShortString2, entryShortString2);
 				//	Print("Put StopLoss 2 ATR Short");
 				}
 			} else {
@@ -867,16 +874,18 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		
 		protected virtual void calculateProfitTargetPriceLong(double price, bool isRunner) {
 			if (profitTargetType == CommonEnums.ProfitTargetType.ATR) {
-				Print("Setting ATR Profit Target Long "+ ProfitTarget_ATR.TrailingStopHigh[0]);
-				//SetProfitTarget(entryLongString1, CalculationMode.Price, ProfitTarget_ATR.TrailingStopHigh[0], false);
+				Print("Setting ATR Profit Target Long "+ Instrument.MasterInstrument.RoundToTickSize(ProfitTarget_ATR.TrailingStopHigh[0]));
+				//SetProfitTarget(entryLongString1, CalculationMode.Price, Instrument.MasterInstrument.RoundToTickSize(ProfitTarget_ATR.TrailingStopHigh[0]), false);
 				
-				if (isRunner == false) 
-					ExitLongLimit(0, true, PositionSize, ProfitTarget_ATR.TrailingStopHigh[0], "Profit Target "+entryLongString1, entryLongString1);
+				if (isRunner == false)
+				{
+					ExitLongLimit(0, true, PositionSize, Instrument.MasterInstrument.RoundToTickSize(ProfitTarget_ATR.TrailingStopHigh[0]), "Profit Target "+entryLongString1, entryLongString1);
 				//Print("Put Profit Target 1 ATR Long");
-				
+				Draw.TriangleDown(this, @"atrprofit1"+ (CurrentBar % 1000), true, CurrentBar, Instrument.MasterInstrument.RoundToTickSize(ProfitTarget_ATR.TrailingStopHigh[0]), Brushes.Yellow);
+				}
 				else {
-					//SetProfitTarget(entryLongString2, CalculationMode.Price, Runner_ATR.TrailingStopHigh[0], false);
-					ExitLongLimit(0, true, RunnerPositionSize, Runner_ATR.TrailingStopHigh[0], "Profit Target "+entryLongString2, entryLongString2);
+					//SetProfitTarget(entryLongString2, CalculationMode.Price, Instrument.MasterInstrument.RoundToTickSize(Runner_ATR.TrailingStopHigh[0]), false);
+					ExitLongLimit(0, true, RunnerPositionSize, Instrument.MasterInstrument.RoundToTickSize(Runner_ATR.TrailingStopHigh[0]), "Profit Target "+entryLongString2, entryLongString2);
 					
 				//	Print("Put Profit Target 2 ATR Long");
 				}
@@ -897,14 +906,14 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 		
 		protected virtual void calculateProfitTargetPriceShort(double price, bool isRunner) {
 			 if (profitTargetType == CommonEnums.ProfitTargetType.ATR) {
-				 Print("Setting ATR Profit Target Short "+ ProfitTarget_ATR.TrailingStopLow[0]);
-			//	SetProfitTarget(entryShortString1, CalculationMode.Price,ProfitTarget_ATR.TrailingStopLow[0], false);
+				 Print("Setting ATR Profit Target Short "+ Instrument.MasterInstrument.RoundToTickSize(ProfitTarget_ATR.TrailingStopLow[0]));
+			//	SetProfitTarget(entryShortString1, CalculationMode.Price,Instrument.MasterInstrument.RoundToTickSize(ProfitTarget_ATR.TrailingStopLow[0]), false);
 				if (isRunner == false)
-				 	ExitShortLimit(0, true, PositionSize, ProfitTarget_ATR.TrailingStopLow[0], "Profit Target "+entryShortString1, entryShortString1);
+				 	ExitShortLimit(0, true, PositionSize, Instrument.MasterInstrument.RoundToTickSize(ProfitTarget_ATR.TrailingStopLow[0]), "Profit Target "+entryShortString1, entryShortString1);
 				//Print("Put Profit Target 1 ATR Short");
 				else {
-					//SetProfitTarget(entryShortString2, CalculationMode.Price, Runner_ATR.TrailingStopLow[0], false);
-					ExitShortLimit(0 , true, RunnerPositionSize, Runner_ATR.TrailingStopLow[0], "Profit Target "+entryShortString2, entryShortString2);
+					//SetProfitTarget(entryShortString2, CalculationMode.Price, Instrument.MasterInstrument.RoundToTickSize(Runner_ATR.TrailingStopLow[0]), false);
+					ExitShortLimit(0 , true, RunnerPositionSize, Instrument.MasterInstrument.RoundToTickSize(Runner_ATR.TrailingStopLow[0]), "Profit Target "+entryShortString2, entryShortString2);
 					//Print("Put Profit Target 2 ATR Short");
 				}
 			} else {
@@ -1091,6 +1100,8 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 				return;
 			}
 
+			double entryPrice  = 0.0;
+
             if ((Position.MarketPosition == MarketPosition.Flat)
 				&& (orderState == CommonEnums.OrderState.BOTH || orderState == CommonEnums.OrderState.LONGS) 
                 && validateEntryLong()
@@ -1106,16 +1117,47 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					
 				} else if (orderType == CommonEnums.OrderType.LIMIT) {
 					if (limitType == CommonEnums.LimitType.CLOSE) {
-						EnterLongLimit(Convert.ToInt32(PositionSize), Close[0] + LimitOffset*TickSize, entryLongString1);
-						if (enableRunner == true) {
-							EnterLongLimit(Convert.ToInt32(RunnerPositionSize), Close[0] + LimitOffset*TickSize, entryLongString2);
+
+						entryPrice  = Close[BarOffset] + LimitOffset*TickSize;
+						if (entryPrice <= GetCurrentAsk(0))
+                        {
+							EnterLongLimit(Convert.ToInt32(PositionSize), entryPrice, entryLongString1);
+							if (enableRunner == true) {
+								EnterLongLimit(Convert.ToInt32(RunnerPositionSize), entryPrice, entryLongString2);
+							}
+						}
+						else
+						{
+							EnterLongStopLimit(Convert.ToInt32(PositionSize), entryPrice, entryPrice, entryLongString1);
+                            if (enableRunner == true) {
+                                EnterLongStopLimit(Convert.ToInt32(RunnerPositionSize), entryPrice, entryPrice, entryLongString2);
+                            }
 						}
 					} else if (limitType == CommonEnums.LimitType.HILO) {
+						entryPrice  = High[BarOffset] + LimitOffset*TickSize;
+
 						Print("LimitOffset "+LimitOffset);
-						EnterLongLimit(Convert.ToInt32(PositionSize), High[0] + LimitOffset*TickSize, entryLongString1);
-						if (enableRunner == true) {
-							EnterLongLimit(Convert.ToInt32(RunnerPositionSize), High[0] + LimitOffset*TickSize, entryLongString2);
-						}
+						//EnterLongLimit(Convert.ToInt32(PositionSize), High[0] + LimitOffset*TickSize, entryLongString1);
+						//if (enableRunner == true) {
+						//	EnterLongLimit(Convert.ToInt32(RunnerPositionSize), High[0] + LimitOffset*TickSize, entryLongString2);
+						//}
+						
+						//if the desired entryPrice is <= current ask enter with a Limit, otherwise StopLimit
+						if (entryPrice <= GetCurrentAsk(0))
+                        {
+							EnterLongLimit(Convert.ToInt32(PositionSize), entryPrice, entryLongString1);
+                            if (enableRunner == true) {
+                                EnterLongLimit(Convert.ToInt32(RunnerPositionSize), entryPrice, entryLongString2);
+                            }
+                        } else
+                        {
+							EnterLongStopLimit(Convert.ToInt32(PositionSize), entryPrice, entryPrice, entryLongString1);
+                            if (enableRunner == true) {
+                                EnterLongStopLimit(Convert.ToInt32(RunnerPositionSize), entryPrice, entryPrice, entryLongString2);
+                            }
+
+                        }
+
 					}
 				}
             }
@@ -1133,15 +1175,46 @@ namespace NinjaTrader.NinjaScript.Strategies.ArchReactor {
 					}
 				} else if (orderType == CommonEnums.OrderType.LIMIT) {
 					if (limitType == CommonEnums.LimitType.CLOSE) {
-						EnterShortLimit(0, false, Convert.ToInt32(PositionSize), Close[0] - LimitOffset*TickSize, entryShortString1);
-						if (enableRunner == true) {
-							EnterShortLimit(Convert.ToInt32(RunnerPositionSize), Close[0] - LimitOffset*TickSize, entryShortString2);
+						if (entryPrice >= GetCurrentAsk(0))
+                        {
+							EnterShortLimit(0, false, Convert.ToInt32(PositionSize), Close[0] - LimitOffset*TickSize, entryShortString1);
+							if (enableRunner == true) {
+								EnterShortLimit(Convert.ToInt32(RunnerPositionSize), Close[0] - LimitOffset*TickSize, entryShortString2);
+							}
+						}
+						else
+						{
+							EnterShortStopLimit(Convert.ToInt32(PositionSize), entryPrice, entryPrice, entryShortString1);
+                            if (enableRunner == true) {
+                                EnterShortStopLimit(Convert.ToInt32(RunnerPositionSize), entryPrice, entryPrice, entryShortString2);
+                            }
 						}
 					} else if (limitType == CommonEnums.LimitType.HILO) {
-						entryOrder = EnterShortLimit(0, false, Convert.ToInt32(PositionSize), Low[0] - LimitOffset*TickSize, entryShortString1);
+						entryPrice  = Low[BarOffset] - LimitOffset*TickSize;
+
+
+						/*
+						EnterShortLimit(0, false, Convert.ToInt32(PositionSize), Low[0] - LimitOffset*TickSize, entryShortString1);
 						if (enableRunner == true) {
 							EnterShortLimit(Convert.ToInt32(RunnerPositionSize), Low[0] - LimitOffset*TickSize, entryShortString2);
 						}
+						*/
+
+						//if the desired entry price is >= than the current ask enter with a limit, otherwise a stoplimit order
+						if (entryPrice >= GetCurrentAsk(0))
+                        {							
+                            EnterShortLimit(Convert.ToInt32(PositionSize), entryPrice, entryShortString1);
+                            if (enableRunner == true) {
+                                EnterShortLimit(Convert.ToInt32(RunnerPositionSize), entryPrice, entryShortString2);
+                            }                            
+                        } else
+                        {
+							EnterShortStopLimit(Convert.ToInt32(PositionSize), entryPrice, entryPrice, entryShortString1);
+                            if (enableRunner == true) {
+                                EnterShortStopLimit(Convert.ToInt32(RunnerPositionSize), entryPrice, entryPrice, entryShortString2);
+                            }
+                        }
+
 					}
 				}
 
